@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 
 namespace Bigly
 {
@@ -9,6 +10,11 @@ namespace Bigly
             //TODO args
 
             Console.WriteLine("Hello World!");
+
+            byte[] data = File.ReadAllBytes("INIZH.big");
+            GlobalHeader globalHeader = GlobalHeader.FromBytes(data);
+
+            Console.WriteLine("Goodbye world!");
         }
     }
 }
