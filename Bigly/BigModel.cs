@@ -13,6 +13,16 @@ namespace Bigly
         public GlobalHeader GlobalHeader { get; private set; } = new GlobalHeader();
         public Dictionary<string, byte[]> Files { get; private set; } = new Dictionary<string, byte[]>();
 
+        public void WriteAllContents(string basePath)
+        {
+            foreach(var kvp in Files)
+            { 
+                string writeFileName = Path.Combine(basePath, kvp.Key);
+                Directory.CreateDirectory(Path.GetDirectoryName(writeFileName));
+                File.WriteAllBytes(writeFileName, kvp.Value);
+            }
+        }
+
         public static BigArchive FromBytes(byte[] data)
         {
             BigArchive bf = new BigArchive();
