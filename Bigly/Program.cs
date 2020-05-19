@@ -7,19 +7,33 @@ namespace Bigly
     {
         static void Main(string[] args)
         {
-            //TODO args
-            //TODO logging
+            try
+            {
+                //TODO args
+                //TODO logging
 
-            Console.WriteLine("Hello World!");
+                if (!args[0].Equals("extract", StringComparison.OrdinalIgnoreCase))
+                    throw new NotImplementedException();
 
-            byte[] data = File.ReadAllBytes("INIZH.big");
-            //GlobalHeader globalHeader = GlobalHeader.FromBytes(data);
-            BigArchive big = BigArchive.FromBytes(data);
+                string filePath = args[1];
+                string fileName = Path.GetFileName(filePath);
 
-            string outputPath = Path.Combine(Directory.GetCurrentDirectory(), "INIZH");
-            big.WriteAllContents(outputPath);
+                Console.WriteLine("Extracting " + fileName);
 
-            Console.WriteLine("Goodbye world!");
+                byte[] data = File.ReadAllBytes(filePath);
+                //GlobalHeader globalHeader = GlobalHeader.FromBytes(data);
+                BigArchive big = BigArchive.FromBytes(data);
+
+                string outputPath = Path.Combine(Directory.GetCurrentDirectory(), Path.GetFileNameWithoutExtension(fileName));
+                big.WriteAllContents(outputPath);
+
+                Console.WriteLine("Done extracting " + fileName);
+            }
+            catch(Exception e)
+            {
+                Console.Error.WriteLine($"Fatal error: {e.GetType().Name}");
+                Console.Error.WriteLine(e.Message);
+            }
         }
     }
 }
