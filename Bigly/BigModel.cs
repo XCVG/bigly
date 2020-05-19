@@ -11,7 +11,7 @@ namespace Bigly
     class BigArchive
     {
         public GlobalHeader GlobalHeader { get; private set; } = new GlobalHeader();
-        public List<BigFileEntry> Files { get; private set; } = new List<BigFileEntry>();
+        public Dictionary<string, byte[]> Files { get; private set; } = new Dictionary<string, byte[]>();
 
         public static BigArchive FromBytes(byte[] data)
         {
@@ -26,12 +26,17 @@ namespace Bigly
             //there's some junk after the index: "L225" or "L231" plus 4 or 5 bytes of padding
             //Music.big also has some weird junk in between the end of the index and the mystery junk, but I'm not sure if it's intended or not
             //we can probably ignore that when loading but not when saving
+            //we will probably just try "L231" plus four bytes at least initially
 
-
+            //load files from index
+            foreach(var indexEntry in fi.Entries)
+            {
+                byte[] fileData = data[(int)indexEntry.DataPosition..(int)(indexEntry.DataPosition + indexEntry.DataSize)];
+                bf.Files.Add(indexEntry.FileName, fileData);
+            }
 
             return bf;
         }
-
 
         //temporary object; index of files
         private class FileIndex
@@ -53,7 +58,8 @@ namespace Bigly
 
                     fie.DataPosition = EndianBitConverter.BigEndian.ToUInt32(indexData, i);
                     fie.DataSize = EndianBitConverter.BigEndian.ToUInt32(indexData, i + 4);
-
+                    fie.FileName = CStringConverter.ToString(indexData, i + 8, out int lastIndex);
+                    i = lastIndex + 1;
 
                     fi.Entries.Add(fie);
 
@@ -73,11 +79,6 @@ namespace Bigly
             public string FileName { get; set; }
         }
 
-
-    }
-
-    class BigFileEntry
-    {
 
     }
 
