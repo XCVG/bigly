@@ -1,6 +1,7 @@
 ﻿using BitConverter;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 
 namespace Bigly
@@ -19,6 +20,14 @@ namespace Bigly
             //load global header
             bf.GlobalHeader = GlobalHeader.FromBytes(data);
 
+            //load the index
+            FileIndex fi = FileIndex.FromBytes(data, bf.GlobalHeader);
+
+            //there's some junk after the index: "L225" or "L231" plus 4 or 5 bytes of padding
+            //Music.big also has some weird junk in between the end of the index and the mystery junk, but I'm not sure if it's intended or not
+            //we can probably ignore that when loading but not when saving
+
+
 
             return bf;
         }
@@ -31,7 +40,28 @@ namespace Bigly
 
             public static FileIndex FromBytes(byte[] data, GlobalHeader header)
             {
-                throw new NotImplementedException();
+                FileIndex fi = new FileIndex();
+
+                byte[] indexData = data[16..(int)header.HeaderLastIndex];
+
+                //File.WriteAllBytes("idx2.bin", indexData); //for testing
+
+                //now it's time to loop through and grab all the file header data!
+                for(int i = 0; i < indexData.Length;)
+                {
+                    FileIndexEntry fie = new FileIndexEntry();
+
+                    fie.DataPosition = EndianBitConverter.BigEndian.ToUInt32(indexData, i);
+                    fie.DataSize = EndianBitConverter.BigEndian.ToUInt32(indexData, i + 4);
+
+
+                    fi.Entries.Add(fie);
+
+                    if (indexData.Length - i <= 8) //we can't possibly have another entry
+                        break;
+                }
+
+                return fi;
             }
 
         }
@@ -56,7 +86,7 @@ namespace Bigly
         public string Header { get; set; } = "BIGF";
         public uint FileSize { get; set; }
         public uint NumFiles { get; set; }
-        public uint IndexTableSize { get; set; }
+        public uint HeaderLastIndex { get; set; } //actually not a length at all
 
         public GlobalHeader()
         {
@@ -70,7 +100,7 @@ namespace Bigly
             gh.Header = Encoding.ASCII.GetString(bytes, 0, 4); //probably actually ANSI but that's not supported on .NET Core
             gh.FileSize = EndianBitConverter.LittleEndian.ToUInt32(bytes, 4);
             gh.NumFiles = EndianBitConverter.BigEndian.ToUInt32(bytes, 8); //yes, really
-            gh.IndexTableSize = EndianBitConverter.BigEndian.ToUInt32(bytes, 12);
+            gh.HeaderLastIndex = EndianBitConverter.BigEndian.ToUInt32(bytes, 12);
 
             return gh;
         }

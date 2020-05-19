@@ -12,7 +12,8 @@ namespace Bigly
             Console.WriteLine("Hello World!");
 
             byte[] data = File.ReadAllBytes("INIZH.big");
-            GlobalHeader globalHeader = GlobalHeader.FromBytes(data);
+            //GlobalHeader globalHeader = GlobalHeader.FromBytes(data);
+            BigArchive big = BigArchive.FromBytes(data);
 
             Console.WriteLine("Goodbye world!");
         }
