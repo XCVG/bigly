@@ -24,5 +24,16 @@ namespace Bigly
             }
         }
 
+        //does the opposite, mostly
+        public static byte[] FromString(string str)
+        {
+            //really stupid
+            byte[] bytestr = Encoding.ASCII.GetBytes(str);
+            byte[] bytes = new byte[bytestr.Length + 1];
+            Array.Copy(bytestr, bytes, bytestr.Length);
+            bytes[bytes.Length - 1] = 0;
+            return bytes;
+        }
+
     }
 }

@@ -1,7 +1,10 @@
 ﻿using EndianBitConverter;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.IO;
+using System.Linq;
+using System.Net;
 using System.Text;
 
 namespace Bigly
@@ -10,7 +13,7 @@ namespace Bigly
 
     public class BigArchive
     {
-        public GlobalHeader GlobalHeader { get; private set; } = new GlobalHeader();
+        public GlobalHeader GlobalHeader { get; private set; } = new GlobalHeader(); //will probably remove this, doesn't make sense to keep here
         public Dictionary<string, byte[]> Files { get; private set; } = new Dictionary<string, byte[]>();
 
         public void WriteAllContents(string basePath, Action<string> writeLog = null)
@@ -28,6 +31,69 @@ namespace Bigly
             }
 
             writeLog("\n");
+        }
+
+        public void WriteBigFile(string path, Action<string> writeLog = null)
+        {
+            if (writeLog == null)
+                writeLog = NullLogger.Write;
+
+            //write out the contents of this BigArchive as a .big file
+
+            //figure out a heuristic and preallocate a big list of bytes
+            int contentsTotalBytes = 0;
+            foreach(byte[] file in Files.Values)
+            {
+                contentsTotalBytes += file.Length;
+            }
+
+            List<byte> bytes = new List<byte>(contentsTotalBytes + (Files.Count * 64)); //heuristic
+
+            //write an incomplete global header (can write fourcc, numfiles at this point)
+            {
+                bytes.OverwriteRange(0, Encoding.ASCII.GetBytes("BIGF"));
+
+                var fileCount = EndianBitConverter.EndianBitConverter.BigEndian.GetBytes((uint)Files.Count);
+                bytes.OverwriteRange(8, fileCount);
+            }
+
+            List<KeyValuePair<string, byte[]>> fileList = Files.OrderBy(x => x.Key).ToList();
+            int[] fileIndexStartIndices = new int[fileList.Count];
+
+            int bytesIndex = 16; //start after the header
+
+            //write an incomplete index (can write file names and sizes at this point)
+            for(int i = 0; i < fileList.Count; i++)
+            {
+                fileIndexStartIndices[i] = bytesIndex;
+                bytes.OverwriteRange(bytesIndex, new byte[] { 0, 0, 0, 0 }); //address, unknown
+                bytes.OverwriteRange(bytesIndex + 4, EndianBitConverter.EndianBitConverter.BigEndian.GetBytes((uint)fileList[i].Value.Length));
+                byte[] nameBytes = CStringConverter.FromString(fileList[i].Key);
+                bytes.OverwriteRange(bytesIndex + 8, nameBytes);
+                bytesIndex += 4 + 4 + nameBytes.Length; //off-by-one?
+            }
+
+            //write the L231 and four bytes of padding
+            bytes.OverwriteRange(bytesIndex, Encoding.ASCII.GetBytes("L231"));
+            bytes.OverwriteRange(bytesIndex + 4, new byte[] { 0, 0, 0, 0 });
+            bytesIndex += 8;
+
+            //write HeaderLastIndex to the global header
+            bytes.OverwriteRange(12, EndianBitConverter.EndianBitConverter.BigEndian.GetBytes((uint)bytesIndex - 1));
+
+            //File.WriteAllBytes("test.bin", bytes.ToArray()); //was just for testing
+
+            //loop through the index and write each file, writing back its size to the index
+            for(int i = 0; i < fileList.Count; i++)
+            {
+
+            }
+
+            //write FileSize to the global header
+
+            //TODO update the stored global header; most likely we can't do this until the end
+
+            //TODO write the file out
         }
 
         public static BigArchive FromBytes(byte[] data, Action<string> writeLog = null)
@@ -139,6 +205,34 @@ namespace Bigly
         {
             //nop
         }
+    }
+
+    internal static class ListExtensions
+    {
+        //this is stupid as fuck because I tried to use a List<T> like a std::vector
+        public static void OverwriteRange<T>(this List<T> list, int index, IEnumerable<T> collection)
+        {
+            foreach(T item in collection)
+            {
+                if (index > list.Count)
+                    extendList();
+                else if (index == list.Count)
+                    list.Add(default);
+
+                list[index] = item;
+                index++;
+            }
+
+            void extendList()
+            {
+                while(list.Count <= index)
+                {
+                    list.Add(default);
+                }
+            }
+        }
+
+        
     }
 
 }

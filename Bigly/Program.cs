@@ -28,11 +28,14 @@ namespace Bigly
                     BigArchive big = BigArchive.FromBytes(data, Console.Write);
                     Console.WriteLine("BIG File parsed");
 
+                    //for testing only
+                    big.WriteBigFile("test", Console.Write);
+
                     string outputPath = Path.Combine(Directory.GetCurrentDirectory(), Path.GetFileNameWithoutExtension(fileName));
                     if (Directory.Exists(outputPath))
                         Console.WriteLine("Warning: output path already exists! Files may be overwritten.");
                     big.WriteAllContents(outputPath, Console.Write);
-                    Console.WriteLine("BIG contents saved");
+                    Console.WriteLine("BIG contents saved");                    
 
                     Console.WriteLine("Done extracting " + fileName);
                 }
