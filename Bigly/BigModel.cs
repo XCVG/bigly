@@ -1,4 +1,4 @@
-﻿using BitConverter;
+﻿using EndianBitConverter;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -6,7 +6,7 @@ using System.Text;
 
 namespace Bigly
 {
-    //big shout-out to https://gist.github.com/EmilHernvall/953967 which documents the format
+    //big shout-out to https://gist.github.com/EmilHernvall/953967 which documents the format, also https://chipgw.com/2014/12/19/the-big-file-format/
 
     class BigArchive
     {
@@ -66,8 +66,8 @@ namespace Bigly
                 {
                     FileIndexEntry fie = new FileIndexEntry();
 
-                    fie.DataPosition = EndianBitConverter.BigEndian.ToUInt32(indexData, i);
-                    fie.DataSize = EndianBitConverter.BigEndian.ToUInt32(indexData, i + 4);
+                    fie.DataPosition = EndianBitConverter.EndianBitConverter.BigEndian.ToUInt32(indexData, i);
+                    fie.DataSize = EndianBitConverter.EndianBitConverter.BigEndian.ToUInt32(indexData, i + 4);
                     fie.FileName = CStringConverter.ToString(indexData, i + 8, out int lastIndex);
                     i = lastIndex + 1;
 
@@ -109,9 +109,9 @@ namespace Bigly
             GlobalHeader gh = new GlobalHeader();
 
             gh.Header = Encoding.ASCII.GetString(bytes, 0, 4); //probably actually ANSI but that's not supported on .NET Core
-            gh.FileSize = EndianBitConverter.LittleEndian.ToUInt32(bytes, 4);
-            gh.NumFiles = EndianBitConverter.BigEndian.ToUInt32(bytes, 8); //yes, really
-            gh.HeaderLastIndex = EndianBitConverter.BigEndian.ToUInt32(bytes, 12);
+            gh.FileSize = EndianBitConverter.EndianBitConverter.LittleEndian.ToUInt32(bytes, 4);
+            gh.NumFiles = EndianBitConverter.EndianBitConverter.BigEndian.ToUInt32(bytes, 8); //yes, really
+            gh.HeaderLastIndex = EndianBitConverter.EndianBitConverter.BigEndian.ToUInt32(bytes, 12);
 
             return gh;
         }
