@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Bigly": {
+      "commandName": "Project",
+      "commandLineArgs": "extract Audio.big"
+    }
+  }
+}

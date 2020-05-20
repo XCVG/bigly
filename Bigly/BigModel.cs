@@ -8,30 +8,42 @@ namespace Bigly
 {
     //big shout-out to https://gist.github.com/EmilHernvall/953967 which documents the format, also https://chipgw.com/2014/12/19/the-big-file-format/
 
-    class BigArchive
+    public class BigArchive
     {
         public GlobalHeader GlobalHeader { get; private set; } = new GlobalHeader();
         public Dictionary<string, byte[]> Files { get; private set; } = new Dictionary<string, byte[]>();
 
-        public void WriteAllContents(string basePath)
+        public void WriteAllContents(string basePath, Action<string> writeLog = null)
         {
-            foreach(var kvp in Files)
+            if (writeLog == null)
+                writeLog = NullLogger.Write;
+
+            writeLog("Writing files");
+            foreach (var kvp in Files)
             { 
                 string writeFileName = Path.Combine(basePath, kvp.Key);
                 Directory.CreateDirectory(Path.GetDirectoryName(writeFileName));
                 File.WriteAllBytes(writeFileName, kvp.Value);
+                writeLog(".");
             }
+
+            writeLog("\n");
         }
 
-        public static BigArchive FromBytes(byte[] data)
+        public static BigArchive FromBytes(byte[] data, Action<string> writeLog = null)
         {
+            if (writeLog == null)
+                writeLog = NullLogger.Write;
+
             BigArchive bf = new BigArchive();
 
             //load global header
             bf.GlobalHeader = GlobalHeader.FromBytes(data);
+            writeLog("header loaded...");
 
             //load the index
             FileIndex fi = FileIndex.FromBytes(data, bf.GlobalHeader);
+            writeLog("index loaded...");
 
             //there's some junk after the index: "L225" or "L231" plus 4 or 5 bytes of padding
             //Music.big also has some weird junk in between the end of the index and the mystery junk, but I'm not sure if it's intended or not
@@ -39,11 +51,14 @@ namespace Bigly
             //we will probably just try "L231" plus four bytes at least initially
 
             //load files from index
-            foreach(var indexEntry in fi.Entries)
+            writeLog("\nloading files");
+            foreach (var indexEntry in fi.Entries)
             {
                 byte[] fileData = data[(int)indexEntry.DataPosition..(int)(indexEntry.DataPosition + indexEntry.DataSize)];
                 bf.Files.Add(indexEntry.FileName, fileData);
+                writeLog(".");
             }
+            writeLog("\n");
 
             return bf;
         }
@@ -92,7 +107,7 @@ namespace Bigly
 
     }
 
-    class GlobalHeader
+    public class GlobalHeader
     {
         public string Header { get; set; } = "BIGF";
         public uint FileSize { get; set; }
@@ -116,6 +131,14 @@ namespace Bigly
             return gh;
         }
         
+    }
+
+    internal class NullLogger
+    {
+        public static void Write(string text)
+        {
+            //nop
+        }
     }
 
 }

@@ -23,11 +23,16 @@ namespace Bigly
                     Console.WriteLine("Extracting " + fileName);
 
                     byte[] data = File.ReadAllBytes(filePath);
+                    Console.WriteLine("BIG File loaded");
                     //GlobalHeader globalHeader = GlobalHeader.FromBytes(data);
-                    BigArchive big = BigArchive.FromBytes(data);
+                    BigArchive big = BigArchive.FromBytes(data, Console.Write);
+                    Console.WriteLine("BIG File parsed");
 
                     string outputPath = Path.Combine(Directory.GetCurrentDirectory(), Path.GetFileNameWithoutExtension(fileName));
-                    big.WriteAllContents(outputPath);
+                    if (Directory.Exists(outputPath))
+                        Console.WriteLine("Warning: output path already exists! Files may be overwritten.");
+                    big.WriteAllContents(outputPath, Console.Write);
+                    Console.WriteLine("BIG contents saved");
 
                     Console.WriteLine("Done extracting " + fileName);
                 }
