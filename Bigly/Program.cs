@@ -29,7 +29,7 @@ namespace Bigly
                     Console.WriteLine("BIG File parsed");
 
                     //for testing only
-                    big.WriteBigFile("test", Console.Write);
+                    big.WriteBigFile("test.bin", Console.Write);
 
                     string outputPath = Path.Combine(Directory.GetCurrentDirectory(), Path.GetFileNameWithoutExtension(fileName));
                     if (Directory.Exists(outputPath))

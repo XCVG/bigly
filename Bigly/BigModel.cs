@@ -86,14 +86,22 @@ namespace Bigly
             //loop through the index and write each file, writing back its size to the index
             for(int i = 0; i < fileList.Count; i++)
             {
+                byte[] fileBytes = fileList[i].Value;
+                bytes.OverwriteRange(bytesIndex, fileBytes);
 
+                bytes.OverwriteRange(fileIndexStartIndices[i], EndianBitConverter.EndianBitConverter.BigEndian.GetBytes((uint)bytesIndex));
+
+                bytesIndex += fileBytes.Length;
             }
 
             //write FileSize to the global header
+            bytes.OverwriteRange(4, EndianBitConverter.EndianBitConverter.LittleEndian.GetBytes((uint)bytesIndex));
 
             //TODO update the stored global header; most likely we can't do this until the end
 
-            //TODO write the file out
+            //write the file out
+            writeLog("File built, writing!\n");
+            File.WriteAllBytes(path, bytes.ToArray());
         }
 
         public static BigArchive FromBytes(byte[] data, Action<string> writeLog = null)
