@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -50,6 +51,7 @@ namespace Bigly
             List<byte> bytes = new List<byte>(contentsTotalBytes + (Files.Count * 64)); //heuristic
 
             //write an incomplete global header (can write fourcc, numfiles at this point)
+            writeLog("Write global header...");
             {
                 bytes.OverwriteRange(0, Encoding.ASCII.GetBytes("BIGF"));
 
@@ -63,7 +65,8 @@ namespace Bigly
             int bytesIndex = 16; //start after the header
 
             //write an incomplete index (can write file names and sizes at this point)
-            for(int i = 0; i < fileList.Count; i++)
+            writeLog("\nWrite file index");
+            for (int i = 0; i < fileList.Count; i++)
             {
                 fileIndexStartIndices[i] = bytesIndex;
                 bytes.OverwriteRange(bytesIndex, new byte[] { 0, 0, 0, 0 }); //address, unknown
@@ -71,20 +74,26 @@ namespace Bigly
                 byte[] nameBytes = CStringConverter.FromString(fileList[i].Key);
                 bytes.OverwriteRange(bytesIndex + 8, nameBytes);
                 bytesIndex += 4 + 4 + nameBytes.Length; //off-by-one?
+                writeLog(".");
             }
+            writeLog("\n");
 
             //write the L231 and four bytes of padding
+            writeLog("Write L231 and padding...\n");
             bytes.OverwriteRange(bytesIndex, Encoding.ASCII.GetBytes("L231"));
             bytes.OverwriteRange(bytesIndex + 4, new byte[] { 0, 0, 0, 0 });
             bytesIndex += 8;
 
             //write HeaderLastIndex to the global header
-            bytes.OverwriteRange(12, EndianBitConverter.EndianBitConverter.BigEndian.GetBytes((uint)bytesIndex - 1));
+            writeLog("Update global header...\n");
+            uint headerLastIndex = (uint)bytesIndex - 1;
+            bytes.OverwriteRange(12, EndianBitConverter.EndianBitConverter.BigEndian.GetBytes(headerLastIndex));
 
             //File.WriteAllBytes("test.bin", bytes.ToArray()); //was just for testing
 
             //loop through the index and write each file, writing back its size to the index
-            for(int i = 0; i < fileList.Count; i++)
+            writeLog("Write files");
+            for (int i = 0; i < fileList.Count; i++)
             {
                 byte[] fileBytes = fileList[i].Value;
                 bytes.OverwriteRange(bytesIndex, fileBytes);
@@ -92,16 +101,71 @@ namespace Bigly
                 bytes.OverwriteRange(fileIndexStartIndices[i], EndianBitConverter.EndianBitConverter.BigEndian.GetBytes((uint)bytesIndex));
 
                 bytesIndex += fileBytes.Length;
+                writeLog(".");
             }
+            writeLog("\n");
 
             //write FileSize to the global header
+            writeLog("Update global header...\n");
             bytes.OverwriteRange(4, EndianBitConverter.EndianBitConverter.LittleEndian.GetBytes((uint)bytesIndex));
 
-            //TODO update the stored global header; most likely we can't do this until the end
+            //update the stored global header; why do we even store this?
+            GlobalHeader.Header = "BIGF";
+            GlobalHeader.NumFiles = (uint)fileList.Count;
+            GlobalHeader.FileSize = (uint)bytesIndex;
+            GlobalHeader.HeaderLastIndex = headerLastIndex;
 
             //write the file out
-            writeLog("File built, writing!\n");
+            writeLog("File built, writing out to disk!\n");
             File.WriteAllBytes(path, bytes.ToArray());
+        }
+
+        public void AddFile(string filePath, string fileName = null, Action<string> writeLog = null)
+        {
+            if (writeLog == null)
+                writeLog = NullLogger.Write;
+
+            if (fileName == null)
+                fileName = filePath;
+
+            if(File.Exists(filePath))
+            {
+                Files.Add(fileName, File.ReadAllBytes(filePath));
+            }
+            else
+            {
+                writeLog($"Didn't add {filePath} because it doesn't exist!");
+                throw new FileNotFoundException();
+            }
+        }
+
+        public void AddDirectory(string dirPath, bool recurse, string basePath = null, Action<string> writeLog = null)
+        {
+            if (writeLog == null)
+                writeLog = NullLogger.Write;
+
+            if (basePath == null)
+                basePath = dirPath;
+
+            if (!Directory.Exists(dirPath))
+                throw new DirectoryNotFoundException();
+
+            var fileList = Directory.EnumerateFiles(dirPath, "*.*", SearchOption.AllDirectories).ToList();
+
+            writeLog("Adding files");
+            foreach(string file in fileList)
+            {
+                //correct the file path name in the archive (probably off-by-one as fuck)
+                string fileName = file;
+                if (basePath != dirPath && file.StartsWith(dirPath))
+                {
+                    fileName = file.Substring(dirPath.Length - 1, file.Length - dirPath.Length);
+                }
+
+                Files.Add(fileName, File.ReadAllBytes(file));
+                writeLog(".");
+            }
+            writeLog("\n");
         }
 
         public static BigArchive FromBytes(byte[] data, Action<string> writeLog = null)

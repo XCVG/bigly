@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 
 namespace Bigly
 {
@@ -29,7 +30,7 @@ namespace Bigly
                     Console.WriteLine("BIG File parsed");
 
                     //for testing only
-                    big.WriteBigFile("test.bin", Console.Write);
+                    //big.WriteBigFile("test.bin", Console.Write);
 
                     string outputPath = Path.Combine(Directory.GetCurrentDirectory(), Path.GetFileNameWithoutExtension(fileName));
                     if (Directory.Exists(outputPath))
@@ -41,7 +42,49 @@ namespace Bigly
                 }
                 else if (args[0].Equals("pack", StringComparison.OrdinalIgnoreCase))
                 {
-                    throw new NotImplementedException();
+                    BigArchive big = new BigArchive();
+
+                    int modeIndex = Array.FindIndex(args, s => s.Equals("-m", StringComparison.OrdinalIgnoreCase));
+                    if (modeIndex >= 0)
+                    {
+                        string mode = args[modeIndex + 1];
+                        if(mode.Equals("generals", StringComparison.OrdinalIgnoreCase))
+                        {
+                            string[] generalsFolders = new string[] { "Art", "Data", "Maps", "Window"};
+                            Console.WriteLine("Packing " + string.Join(',', generalsFolders));
+                            foreach(var folder in generalsFolders)
+                            {
+                                if (Directory.Exists(folder))
+                                {
+                                    Console.WriteLine("Packing " + folder);
+                                    big.AddDirectory(folder, true, folder, Console.Write);
+                                }
+                                else
+                                {
+                                    Console.WriteLine("Skipped " + folder + " because it doesn't exist");
+                                }
+                            }
+                        }
+                        else
+                        {
+                            throw new NotSupportedException("Only the \"generals\" mode is supported at this time");
+                        }
+
+                    }
+                    else if(args.Contains("-i", StringComparer.OrdinalIgnoreCase))
+                    {
+                        throw new NotImplementedException("-i option is not yet implemented");
+                    }
+                    else
+                    {
+                        throw new NotSupportedException($"Either a mode or input paths must be specified for the pack option");
+                    }
+
+                    string fileName = args[args.Length - 1];
+
+                    big.WriteBigFile(fileName, Console.Write);
+                    Console.WriteLine("Done packing " + fileName);
+
                 }
                 else
                 {
